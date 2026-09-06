@@ -1,6 +1,16 @@
 version: '3.9'
 
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: expense-tracker-db
+    environment:
+      POSTGRES_DB: expense_tracker
+      POSTGRES_USER: expense
+      POSTGRES_PASSWORD: expense
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   backend:
     build:
       context: ./backend
@@ -10,11 +20,18 @@ services:
       - "8000:8000"
     environment:
       APP_ENV: development
+      DATABASE_URL: postgresql+psycopg://expense:expense@db:5432/expense_tracker
+      JWT_SECRET_KEY: local-development-secret-change-me
+      CORS_ORIGINS: http://localhost:3000
+    depends_on:
+      - db
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
     container_name: expense-tracker-frontend
     ports:
       - "3000:3000"

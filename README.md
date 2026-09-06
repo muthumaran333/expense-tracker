@@ -5,8 +5,9 @@
 This project is a modular monorepo for an Expense Tracker application. The current foundation intentionally keeps the architecture simple and production-aware while avoiding unnecessary AI and microservice complexity.
 
 The initial implementation includes:
-- FastAPI backend with a health endpoint
-- Next.js frontend with a backend health indicator
+- FastAPI backend with PostgreSQL-backed registration and login
+- Argon2 password hashing and JWT access tokens
+- Next.js login/register UI and expense dashboard
 - Dockerfiles for both services
 - Docker Compose for local development
 - GitHub Actions workflows for backend/frontend CI and Docker build validation
@@ -74,8 +75,13 @@ docker compose up --build
 ```
 
 This runs:
+- PostgreSQL on the internal Docker network
 - backend on http://localhost:8000
 - frontend on http://localhost:3000
+
+The frontend includes registration and login. Accounts are stored in PostgreSQL; passwords are never stored as plaintext.
+
+For a non-Compose backend run, copy `backend/.env.example` to `backend/.env` and set `DATABASE_URL` and `JWT_SECRET_KEY` first.
 
 ## CI/CD architecture
 
@@ -118,8 +124,10 @@ The project is prepared for AWS usage through OIDC and IAM. The Terraform files 
 - GitHub OIDC provider
 - IAM deployment role restricted to the repository
 - least-privilege ECR permissions
+- ECS/Fargate services and an Application Load Balancer
+- CloudWatch log groups and ECS task execution IAM
 
-This is the safe base before provisioning ECS/Fargate, RDS, and other future environment components.
+The ECS stack expects a PostgreSQL `DATABASE_URL` and strong `JWT_SECRET_KEY` runtime configuration before authentication is enabled in a deployed environment. Local Compose provisions PostgreSQL automatically.
 
 ## Required AWS setup
 
@@ -145,9 +153,9 @@ Configure:
 
 ## Environment variables
 
-The project currently does not require application secrets at runtime for the initial foundation. Future environment variables may include:
+Runtime environment variables include:
 - DATABASE_URL
-- JWT_SECRET
+- JWT_SECRET_KEY
 - LLM_API_KEY
 - GOOGLE_CLIENT_SECRET
 
