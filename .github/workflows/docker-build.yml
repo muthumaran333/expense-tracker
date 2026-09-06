@@ -1,0 +1,116 @@
+name: Docker Build and Push
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/**'
+
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+      GITHUB_SHA_TAG: ${{ github.sha }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate AWS configuration
+        run: |
+          if [ -z "${AWS_ACCOUNT_ID}" ] || [ -z "${AWS_REGION}" ]; then
+            echo "Set repository variables AWS_ACCOUNT_ID and AWS_REGION before enabling push to ECR."
+            exit 1
+          fi
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/expense-tracker-github-actions
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build backend image
+        run: |
+          docker build \
+            -t expense-tracker-backend:${GITHUB_SHA_TAG} \
+            ./backend
+
+      - name: Build frontend image
+        run: |
+          docker build \
+            -t expense-tracker-frontend:${GITHUB_SHA_TAG} \
+            ./frontend
+
+      - name: Tag backend image for ECR
+        run: |
+          docker tag \
+            expense-tracker-backend:${GITHUB_SHA_TAG} \
+            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/expense-tracker-backend:${GITHUB_SHA_TAG}
+
+      - name: Tag frontend image for ECR
+        run: |
+          docker tag \
+            expense-tracker-frontend:${GITHUB_SHA_TAG} \
+            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/expense-tracker-frontend:${GITHUB_SHA_TAG}
+
+      - name: Push backend image to ECR
+        run: |
+          docker push \
+            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/expense-tracker-backend:${GITHUB_SHA_TAG}
+
+      - name: Push frontend image to ECR
+        run: |
+          docker push \
+            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/expense-tracker-frontend:${GITHUB_SHA_TAG}
+
+      - name: Verify backend image starts
+        if: github.event_name != 'pull_request'
+        run: |
+          docker run -d --rm \
+            -p 8001:8000 \
+            --name expense-tracker-backend-ecr \
+            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/expense-tracker-backend:${GITHUB_SHA_TAG}
+
+          sleep 10
+
+          curl --fail http://localhost:8001/health
+
+      - name: Verify frontend image starts
+        if: github.event_name != 'pull_request'
+        run: |
+          docker run -d --rm \
+            -p 3001:3000 \
+            --name expense-tracker-frontend-ecr \
+            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/expense-tracker-frontend:${GITHUB_SHA_TAG}
+
+          sleep 15
+
+          curl --fail http://localhost:3001
+
+      - name: Cleanup containers
+        if: always()
+        run: |
+          docker rm -f expense-tracker-backend-ecr || true
+          docker rm -f expense-tracker-frontend-ecr || true
