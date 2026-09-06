@@ -33,3 +33,7 @@ crash.log
 
 # Docker
 *.tar
+
+
+
+global-bundle.pem
