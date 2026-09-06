@@ -1,7 +1,8 @@
 import os
 from datetime import datetime, timedelta, timezone
 
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError
 from pwdlib import PasswordHash
 
 PASSWORD_HASHER = PasswordHash.recommended()
@@ -32,5 +33,5 @@ def decode_access_token(token: str) -> int | None:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
         subject = payload.get("sub")
         return int(subject) if subject is not None else None
-    except (JWTError, TypeError, ValueError):
+    except (InvalidTokenError, TypeError, ValueError):
         return None
