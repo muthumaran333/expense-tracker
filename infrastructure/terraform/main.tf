@@ -58,7 +58,7 @@ resource "aws_iam_role" "github_actions" {
           StringLike = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
 
-            "token.actions.githubusercontent.com:sub" = "repo:${var.github_owner}/${var.github_repository}:*"
+            "token.actions.githubusercontent.com:sub" = "repo:${var.github_owner}@164207001/${var.github_repository}@1359018220:*"
           }
         }
       }
