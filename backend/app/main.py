@@ -6,3 +6,7 @@ app = FastAPI(title="Expense Tracker API")
 @app.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "healthy"}
+
+@app.get("/api/health")
+def api_health() -> dict[str, str]:
+    return {"status": "healthy"}

@@ -1,10 +1,11 @@
 name: Deployment
 
 on:
-  push:
-    branches:
-      - develop
-      - main
+  workflow_run:
+    workflows:
+      - Docker Build and Push
+    types:
+      - completed
   workflow_dispatch:
 
 permissions:
@@ -13,7 +14,9 @@ permissions:
 
 jobs:
   staging-deploy:
-    if: github.ref == 'refs/heads/develop'
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'develop')
     runs-on: ubuntu-latest
     environment: staging
     steps:
@@ -28,12 +31,23 @@ jobs:
 
       - name: Stage deployment placeholder
         run: |
-          echo "Staging deployment pipeline is prepared."
-          echo "ECS/Fargate and environment infrastructure still need to be created before this can actually deploy." 
-          echo "Current ECR push is performed by the Docker Build workflow."
+          aws ecs update-service \
+            --cluster expense-tracker \
+            --service expense-tracker-backend \
+            --force-new-deployment
+          aws ecs update-service \
+            --cluster expense-tracker \
+            --service expense-tracker-frontend \
+            --force-new-deployment
+          aws ecs wait services-stable \
+            --cluster expense-tracker \
+            --services expense-tracker-backend expense-tracker-frontend
+          echo "Staging deployment completed."
 
   production-deploy:
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     environment: production
     steps:

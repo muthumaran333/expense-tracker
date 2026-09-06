@@ -19,3 +19,9 @@ variable "deployment_role_name" {
   type        = string
   default     = "expense-tracker-github-actions"
 }
+
+variable "container_image_tag" {
+  description = "ECR image tag used by the ECS task definitions."
+  type        = string
+  default     = "latest"
+}

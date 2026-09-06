@@ -80,11 +80,21 @@ jobs:
         run: |
           docker push \
             ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/expense-tracker-backend:${GITHUB_SHA_TAG}
+          docker tag \
+            expense-tracker-backend:${GITHUB_SHA_TAG} \
+            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/expense-tracker-backend:latest
+          docker push \
+            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/expense-tracker-backend:latest
 
       - name: Push frontend image to ECR
         run: |
           docker push \
             ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/expense-tracker-frontend:${GITHUB_SHA_TAG}
+          docker tag \
+            expense-tracker-frontend:${GITHUB_SHA_TAG} \
+            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/expense-tracker-frontend:latest
+          docker push \
+            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/expense-tracker-frontend:latest
 
       - name: Verify backend image starts
         if: github.event_name != 'pull_request'
